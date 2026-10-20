@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduPulse AI - Adaptive Live Classroom MVP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- Top MVP Header & Role Switcher -->
+  <header class="bg-slate-900 text-white px-4 py-2.5 border-b border-slate-800 text-xs flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50 shadow-md">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-black text-white text-base">EP</span>
+        <div>
+          <span class="font-extrabold text-sm tracking-tight text-white">EduPulse AI</span>
+          <span class="ml-1.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-indigo-500/30 text-indigo-300 border border-indigo-400/30">MVP</span>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center gap-1.5 text-slate-400 pl-3 border-l border-slate-700">
+        <span class="text-slate-300 font-medium">Teach</span> →
+        <span class="text-slate-300 font-medium">Check Understanding</span> →
+        <span class="text-slate-300 font-medium">Adapt Questions</span> →
+        <span class="text-slate-300 font-medium">Spot Weak Topics</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector & Role Indicator -->
+    <div class="flex items-center gap-2">
+      <!-- Teacher-Only Nav Group (Hidden when student is logged in) -->
+      <div id="teacher-nav-group" class="flex items-center gap-2">
+        <button onclick="mvp.switchView('teacher-dashboard')" id="nav-btn-teacher" class="px-3 py-1.5 rounded-lg font-bold bg-indigo-600 text-white transition flex items-center gap-1.5">
+          <span>👩‍🏫 Teacher View</span>
+        </button>
+        <button onclick="mvp.toggleSplitView()" id="nav-btn-split" class="px-3 py-1.5 rounded-lg font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-white transition flex items-center gap-1.5 shadow-sm">
+          <span>⚡ Split Test View</span>
+        </button>
+      </div>
+
+      <!-- Student View Button -->
+      <button onclick="mvp.switchView('student-join')" id="nav-btn-student" class="px-3 py-1.5 rounded-lg font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition flex items-center gap-1.5">
+        <span>🧑‍🎓 Student View</span>
+      </button>
+
+      <!-- Active User & Role Display -->
+      <button onclick="mvp.openLoginModal()" id="btn-login-indicator" class="ml-1 text-slate-300 hover:text-white px-2.5 py-1 text-[11px] rounded-lg border border-slate-700 flex items-center gap-1.5 bg-slate-800/80 transition" title="Click to Switch Role">
+        <span id="current-user-role-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="current-user-display" class="font-semibold">Teacher: Dr. Sarah</span>
+      </button>
+
+      <!-- Quick Role Toggle Button -->
+      <button onclick="mvp.toggleRoleQuick()" id="btn-quick-role-toggle" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition">
+        Switch to Student
+      </button>
+    </div>
+  </header>
+
+  <!-- Secondary Module Navigation Bar -->
+  <nav class="bg-white border-b border-slate-200 px-4 py-2 sticky top-[49px] z-40 shadow-xs text-xs">
+    <div class="max-w-5xl mx-auto flex items-center justify-between overflow-x-auto gap-2">
+      <!-- Teacher Modules Navigation -->
+      <div id="teacher-subnav" class="flex items-center gap-1.5 shrink-0">
+        <span class="text-slate-400 font-semibold mr-1 hidden sm:inline">Teacher Modules:</span>
+        <button onclick="mvp.switchView('teacher-dashboard')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-slate-700 hover:bg-slate-100 transition" data-subnav="teacher-dashboard">🏠 Dashboard</button>
+        <button onclick="mvp.switchView('create-quiz')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-slate-700 hover:bg-slate-100 transition" data-subnav="create-quiz">📝 AI Quiz Studio</button>
+        <button onclick="mvp.switchView('learning-gaps')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-slate-700 hover:bg-slate-100 transition" data-subnav="learning-gaps">🔍 Learning Gap Finder</button>
+        <button onclick="mvp.switchView('success-agent')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-slate-700 hover:bg-slate-100 transition" data-subnav="success-agent">🤖 Student Success Agent</button>
+        <button onclick="mvp.switchView('teacher-live')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-slate-700 hover:bg-slate-100 transition" data-subnav="teacher-live">📡 Live Session</button>
+        <button onclick="mvp.switchView('teacher-results')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-slate-700 hover:bg-slate-100 transition" data-subnav="teacher-results">📊 Results</button>
+      </div>
+
+      <!-- Student Modules Navigation (shown in Student mode) -->
+      <div id="student-subnav" class="hidden flex items-center gap-1.5 shrink-0">
+        <span class="text-slate-400 font-semibold mr-1 hidden sm:inline">Student Portal:</span>
+        <button onclick="mvp.switchView('student-join')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-indigo-700 bg-indigo-50 transition" data-subnav="student-join">🎓 Live Class Quiz</button>
+        <button onclick="mvp.switchView('student-self-quiz')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-slate-700 hover:bg-slate-100 transition" data-subnav="student-self-quiz">✨ Self-Study AI Quiz</button>
+        <button onclick="mvp.switchView('student-gaps')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-slate-700 hover:bg-slate-100 transition" data-subnav="student-gaps">🔍 My Learning Gaps</button>
+        <button onclick="mvp.switchView('student-agent')" class="subnav-btn px-2.5 py-1 rounded-md font-bold text-slate-700 hover:bg-slate-100 transition" data-subnav="student-agent">🤖 Success Coach</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Split Screen Mode Container (Side-by-side Teacher + Student) -->
+  <div id="split-view-container" class="hidden flex-1 bg-slate-900 p-4 gap-4 overflow-hidden">
+    <!-- Left: Live Teacher Controller -->
+    <div class="flex-1 bg-white rounded-2xl border border-slate-700 shadow-2xl flex flex-col overflow-y-auto">
+      <div class="bg-indigo-900 text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Teacher Live Screen (Session Code: <strong class="text-amber-300" id="split-session-code">EDU123</strong>)
+        </span>
+        <span class="text-indigo-200 text-[11px]">Real-Time Telemetry</span>
+      </div>
+      <div id="split-teacher-slot" class="p-6 flex-1 overflow-y-auto space-y-6"></div>
+    </div>
+
+    <!-- Right: Student Mobile Phone Mockup -->
+    <div class="w-full max-w-[420px] bg-slate-950 rounded-2xl p-4 flex flex-col items-center justify-center border border-slate-800 shadow-2xl">
+      <div class="text-center mb-3">
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
+          📱 Student Device Screen
+        </span>
+        <p class="text-[11px] text-slate-400 mt-1">Submit answers to see teacher counters react instantly!</p>
+      </div>
+      <div class="phone-mockup">
+        <div class="phone-mockup-speaker"></div>
+        <div id="split-student-slot" class="phone-screen p-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Screen Viewport -->
+  <main id="single-view-container" class="flex-1 p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full">
+
+    <!-- ========================================== -->
+    <!-- 1. TEACHER DASHBOARD SCREEN -->
+    <!-- ========================================== -->
+    <section id="view-teacher-dashboard" class="mvp-view hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <h1 class="text-2xl font-black text-slate-900">Teacher Dashboard</h1>
+          <p class="text-xs text-slate-500 mt-0.5">Create quizzes, start live adaptive sessions, and view student results.</p>
+        </div>
+        <button onclick="mvp.switchView('create-quiz')" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition flex items-center gap-2">
+          <span>+ Create Quiz</span>
+        </button>
+      </div>
+
+      <!-- Active Session Notice Banner (if active) -->
+      <div id="dashboard-active-session-banner" class="hidden p-4 rounded-2xl bg-indigo-50 border border-indigo-200 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></span>
+          <div>
+            <div class="text-xs font-bold text-indigo-950">Live Session in Progress</div>
+            <div class="text-xs text-indigo-700">Code: <strong class="font-mono text-sm text-indigo-900" id="dash-active-code">EDU123</strong> • <span id="dash-active-quiz-title">Photosynthesis & Cellular Energy</span></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="mvp.switchView('teacher-live')" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition">
+            Resume Live Screen →
+          </button>
+          <button onclick="mvp.viewSessionResults()" class="px-3 py-1.5 rounded-lg border border-indigo-300 text-indigo-700 text-xs font-semibold hover:bg-white transition">
+            View Results
+          </button>
+        </div>
+      </div>
+
+      <!-- The 3 Core EduPulse AI Modules Showcase -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">The 3 Core EduPulse AI Modules</h2>
+          <span class="text-xs text-indigo-600 font-semibold">All Integrated into One Platform</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Module 1: AI Quiz Generator -->
+          <div class="p-5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 shadow-sm transition space-y-3 flex flex-col justify-between group">
+            <div>
+              <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl font-bold mb-3 group-hover:scale-105 transition">
+                📝
+              </div>
+              <h3 class="font-bold text-slate-900 text-base">1. AI Quiz Generator</h3>
+              <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                Generate Bloom's-aligned adaptive multiple-choice quizzes from any topic, grade, and question count in seconds.
+              </p>
+            </div>
+            <button onclick="mvp.switchView('create-quiz')" class="w-full py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition flex items-center justify-center gap-1">
+              <span>Open Quiz Studio</span> →
+            </button>
+          </div>
+
+          <!-- Module 2: Learning Gap Finder -->
+          <div class="p-5 rounded-2xl bg-white border border-slate-200 hover:border-amber-400 shadow-sm transition space-y-3 flex flex-col justify-between group">
+            <div>
+              <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold mb-3 group-hover:scale-105 transition">
+                🔍
+              </div>
+              <h3 class="font-bold text-slate-900 text-base">2. Learning Gap Finder</h3>
+              <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                Analyze quiz attempts to pinpoint the exact misconceptions tripping up students. Get 5-minute chalkboard micro-lecture scripts.
+              </p>
+            </div>
+            <button onclick="mvp.switchView('learning-gaps')" class="w-full py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition flex items-center justify-center gap-1">
+              <span>Find Learning Gaps</span> →
+            </button>
+          </div>
+
+          <!-- Module 3: Student Success Agent -->
+          <div class="p-5 rounded-2xl bg-white border border-slate-200 hover:border-rose-400 shadow-sm transition space-y-3 flex flex-col justify-between group">
+            <div>
+              <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl font-bold mb-3 group-hover:scale-105 transition">
+                🤖
+              </div>
+              <h3 class="font-bold text-slate-900 text-base">3. Student Success Agent</h3>
+              <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                Early detection for at-risk students (grades &lt; 60%, absences, missing assignments). Automatically formulates personalized action plans.
+              </p>
+            </div>
+            <button onclick="mvp.switchView('success-agent')" class="w-full py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition flex items-center justify-center gap-1">
+              <span>View Success Radar</span> →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- My Quizzes List -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-bold text-slate-900">My Quizzes</h2>
+          <span class="text-xs text-slate-500" id="quizzes-count-badge">2 Quizzes</span>
+        </div>
+
+        <div class="divide-y divide-slate-100" id="my-quizzes-list">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. CREATE QUIZ SCREEN -->
+    <!-- ========================================== -->
+    <section id="view-create-quiz" class="mvp-view hidden space-y-6">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+        <div>
+          <button onclick="mvp.switchView('teacher-dashboard')" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition mb-1">
+            ← Back to Dashboard
+          </button>
+          <h1 class="text-2xl font-black text-slate-900">Create Adaptive Quiz</h1>
+        </div>
+        <button onclick="mvp.saveQuiz()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow transition">
+          Save Quiz & Finish
+        </button>
+      </div>
+
+      <!-- AI Assist Generator Box -->
+      <div class="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-4">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">✨</span>
+          <h3 class="font-bold text-indigo-950 text-sm">AI Assist: Generate Questions</h3>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Topic</label>
+            <input type="text" id="input-quiz-topic" value="Photosynthesis" placeholder="e.g. Photosynthesis" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Grade</label>
+            <input type="text" id="input-quiz-grade" value="10" placeholder="e.g. 10" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Number of Questions</label>
+            <select id="input-quiz-count" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+              <option value="5" selected>5 Questions (Recommended)</option>
+              <option value="6">6 Questions</option>
+              <option value="7">7 Questions</option>
+              <option value="8">8 Questions</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <div class="text-[11px] text-slate-600">
+            Topic presets:
+            <button onclick="mvp.fillTopicPreset('Photosynthesis', '10')" class="text-indigo-600 hover:underline font-semibold ml-1">Photosynthesis</button> •
+            <button onclick="mvp.fillTopicPreset('Quadratic Equations', '10')" class="text-indigo-600 hover:underline font-semibold ml-1">Quadratics</button> •
+            <button onclick="mvp.fillTopicPreset('Newtonian Forces', '11')" class="text-indigo-600 hover:underline font-semibold ml-1">Physics Forces</button>
+          </div>
+          <button onclick="mvp.generateAIQuestions()" id="btn-generate-ai" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5">
+            <span>Generate with AI</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quiz Title -->
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Quiz Title <span class="text-rose-500">*</span></label>
+        <input type="text" id="input-quiz-title" value="Photosynthesis & Cellular Energy" class="w-full text-sm font-bold p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+      </div>
+
+      <!-- Editable Questions Container -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-slate-900">Questions (Multiple-Choice Only)</h3>
+            <span class="text-xs text-slate-500" id="editor-questions-count">5 Questions</span>
+          </div>
+          <button onclick="mvp.addBlankQuestion()" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold hover:bg-slate-50 transition">
+            + Add Blank Question
+          </button>
+        </div>
+
+        <div id="editable-questions-list" class="space-y-4">
+          <!-- Dynamic editable cards -->
+        </div>
+      </div>
+
+      <div class="pt-4 flex justify-end">
+        <button onclick="mvp.saveQuiz()" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow transition">
+          Save Quiz & Return to Dashboard
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. STUDENT LOGIN / JOIN SCREEN (DEFAULT LANDING) -->
+    <!-- ========================================== -->
+    <section id="view-student-join" class="mvp-view py-6 sm:py-10 max-w-md mx-auto space-y-4">
+      <!-- Student Role Alert Banner -->
+      <div id="student-join-role-banner" class="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-950 text-xs flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-2">
+          <span class="text-base">🧑‍🎓</span>
+          <div>
+            <span class="font-bold block">Student Portal Active</span>
+            <span class="text-[11px] text-indigo-700">Enter your name & session code below to join your live adaptive quiz.</span>
+          </div>
+        </div>
+        <button onclick="mvp.loginAsRole('teacher')" class="px-2.5 py-1 rounded-lg bg-white border border-indigo-300 font-bold text-indigo-700 text-[11px] hover:bg-indigo-100 transition shrink-0 ml-2">
+          Teacher Sign-In →
+        </button>
+      </div>
+
+      <div class="bg-white rounded-3xl border border-slate-200 p-8 shadow-xl text-center space-y-6">
+        <div class="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto text-3xl font-black shadow-inner">
+          🎓
+        </div>
+        <div>
+          <h1 class="text-2xl font-black text-slate-900">Student Login & Join</h1>
+          <p class="text-xs text-slate-500 mt-1">Enter your name and the six-character session code from your teacher.</p>
+        </div>
+
+        <div class="space-y-4 text-left">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Your Full Name <span class="text-rose-500">*</span></label>
+            <input type="text" id="student-input-name" value="Alex Chen" placeholder="e.g. Alex Chen" class="w-full text-sm font-semibold p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Session Code (6 Characters) <span class="text-rose-500">*</span></label>
+            <input type="text" id="student-input-code" value="EDU123" maxlength="6" placeholder="EDU123" class="w-full text-center text-2xl font-mono font-black uppercase tracking-widest p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <!-- Quick Test Personas for rapid evaluation -->
+          <div class="pt-1">
+            <span class="text-[11px] font-semibold text-slate-400 block mb-1.5">Quick 1-Click Test Names:</span>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+              <button onclick="mvp.quickFillStudent('Alex Chen')" class="p-2 rounded-lg border border-slate-200 hover:border-indigo-400 bg-slate-50 font-bold text-slate-800 transition">Alex Chen</button>
+              <button onclick="mvp.quickFillStudent('Maya Lin')" class="p-2 rounded-lg border border-slate-200 hover:border-indigo-400 bg-slate-50 font-bold text-slate-800 transition">Maya Lin</button>
+              <button onclick="mvp.quickFillStudent('Jordan Smith')" class="p-2 rounded-lg border border-slate-200 hover:border-indigo-400 bg-slate-50 font-bold text-slate-800 transition">Jordan Smith</button>
+            </div>
+          </div>
+
+          <button onclick="mvp.studentJoinQuiz()" class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition">
+            Join Live Quiz →
+          </button>
+        </div>
+
+        <!-- Teacher Switch Footer Link -->
+        <div class="pt-2 border-t border-slate-100 text-center text-xs text-slate-500">
+          <span>Are you an instructor? </span>
+          <button onclick="mvp.loginAsRole('teacher')" class="font-bold text-indigo-600 hover:underline">
+            Teacher Sign-In (Full Access) →
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. LIVE QUIZ SCREEN (STUDENT) -->
+    <!-- ========================================== -->
+    <section id="view-student-live" class="mvp-view hidden max-w-xl mx-auto space-y-5">
+      <!-- Student Header -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-bold text-slate-900" id="student-live-name">Alex Chen</span>
+            <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Student Role</span>
+          </div>
+          <span class="text-[11px] text-slate-500" id="student-live-session-code">Session: EDU123</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="student-live-tier-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
+            Difficulty: Level 1
+          </span>
+          <span id="student-live-score-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+            Score: 0
+          </span>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="space-y-1">
+        <div class="flex justify-between text-[11px] font-semibold text-slate-500">
+          <span id="student-progress-text">Question 1 of 5</span>
+          <span id="student-adaptation-hint" class="text-indigo-600">Adaptive engine ready</span>
+        </div>
+        <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+          <div id="student-progress-bar" class="bg-indigo-600 h-1.5 rounded-full transition-all duration-300" style="width: 20%"></div>
+        </div>
+      </div>
+
+      <!-- Question Card -->
+      <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md space-y-6">
+        <h2 id="student-question-text" class="text-lg font-bold text-slate-900 leading-snug">
+          Loading question...
+        </h2>
+
+        <!-- 4 Options (A, B, C, D) -->
+        <div class="space-y-3" id="student-options-container">
+          <!-- Dynamically populated options -->
+        </div>
+
+        <button onclick="mvp.submitStudentAnswer()" id="btn-submit-answer" disabled class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm shadow transition">
+          Submit Answer
+        </button>
+      </div>
+
+      <!-- Immediate Feedback Card -->
+      <div id="student-feedback-box" class="hidden p-5 rounded-2xl border shadow-md space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 font-black text-base" id="feedback-headline">
+            <!-- Correct / Incorrect -->
+          </div>
+          <span id="feedback-adaptive-shift" class="px-2 py-0.5 rounded text-xs font-bold bg-white border">
+            <!-- Next: Harder/Easier -->
+          </span>
+        </div>
+
+        <p class="text-xs text-slate-700" id="feedback-explanation">
+          <!-- Short explanation -->
+        </p>
+
+        <button onclick="mvp.nextAdaptiveQuestion()" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow transition">
+          Next Question →
+        </button>
+      </div>
+
+      <!-- Quiz Finished Screen -->
+      <div id="student-completed-box" class="hidden bg-white rounded-3xl border border-slate-200 p-8 shadow-xl text-center space-y-5">
+        <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-3xl font-black">
+          ✓
+        </div>
+        <h2 class="text-2xl font-black text-slate-900">Quiz Completed!</h2>
+        <p class="text-xs text-slate-500">Your answers were submitted to the teacher's live dashboard.</p>
+
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 max-w-xs mx-auto">
+          <div class="text-xs text-slate-500 font-semibold">Your Final Score</div>
+          <div class="text-3xl font-extrabold text-emerald-600 mt-1" id="student-final-score">4 / 5 (80%)</div>
+        </div>
+
+        <button onclick="mvp.switchView('student-join')" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition">
+          Take Another Quiz
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 5. TEACHER LIVE SCREEN -->
+    <!-- ========================================== -->
+    <section id="view-teacher-live" class="mvp-view hidden space-y-6">
+      <!-- Session Top Bar -->
+      <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Live Classroom Active</span>
+          </div>
+          <h2 class="text-2xl font-black text-white mt-1" id="teacher-live-quiz-title">Photosynthesis & Cellular Energy</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Students join using the code below. Results update live as they answer.</p>
+        </div>
+
+        <div class="bg-indigo-950 border border-indigo-500/40 px-5 py-3 rounded-2xl text-center">
+          <div class="text-[10px] text-indigo-300 font-bold uppercase tracking-widest">Join Code</div>
+          <div class="text-3xl font-mono font-black text-amber-400 tracking-wider" id="teacher-live-code-display">EDU123</div>
+        </div>
+      </div>
+
+      <!-- Live Counters: Joined Students, Answers Received, Correct Percentage -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Joined Students</div>
+          <div class="text-4xl font-black text-slate-900 mt-2" id="live-count-students">0</div>
+          <div class="text-[11px] text-slate-400 mt-1">Unique student devices</div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Answers Received</div>
+          <div class="text-4xl font-black text-indigo-600 mt-2" id="live-count-answers">0</div>
+          <div class="text-[11px] text-slate-400 mt-1">Total responses submitted</div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Correct Percentage</div>
+          <div class="text-4xl font-black text-emerald-600 mt-2" id="live-count-accuracy">0%</div>
+          <div class="text-[11px] text-slate-400 mt-1">Real-time class accuracy</div>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        <div class="flex items-center gap-2">
+          <button onclick="mvp.simulateStudentBatch()" class="px-3.5 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition flex items-center gap-1.5 border border-indigo-200">
+            <span>🤖 Simulate 3 Student Responses</span>
+          </button>
+          <span class="text-xs text-slate-500 hidden sm:inline">Use to test live counters without extra devices</span>
+        </div>
+
+        <button onclick="mvp.viewSessionResults()" class="px-5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow transition">
+          End Session & View Results →
+        </button>
+      </div>
+
+      <!-- Live Responses Feed Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-slate-900 text-sm">Real-Time Student Submissions</h3>
+          <span class="text-xs text-slate-400">Live sync active</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
+              <tr>
+                <th class="p-3">Student Name</th>
+                <th class="p-3">Question</th>
+                <th class="p-3">Selected Choice</th>
+                <th class="p-3">Result</th>
+                <th class="p-3 text-right">Time</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="live-attempts-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 6. TEACHER RESULTS PAGE -->
+    <!-- ========================================== -->
+    <section id="view-teacher-results" class="mvp-view hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <button onclick="mvp.switchView('teacher-dashboard')" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition mb-1">
+            ← Return to Dashboard
+          </button>
+          <h1 class="text-2xl font-black text-slate-900">Session Results & Insights</h1>
+          <p class="text-xs text-slate-500 mt-0.5" id="results-quiz-subtitle">Photosynthesis & Cellular Energy • Session EDU123</p>
+        </div>
+        <button onclick="window.print()" class="px-3.5 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition">
+          Print / Export
+        </button>
+      </div>
+
+      <!-- Core MVP Summary Cards: Total Students, Average Score, Most Difficult Question -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Students</div>
+          <div class="text-3xl font-black text-slate-900 mt-2" id="results-total-students">5</div>
+          <div class="text-xs text-slate-400 mt-1">Completed responses</div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Average Score</div>
+          <div class="text-3xl font-black text-indigo-600 mt-2" id="results-avg-score">73%</div>
+          <div class="text-xs text-slate-400 mt-1">Overall class performance</div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-rose-200 bg-rose-50/30 p-5 shadow-sm text-center">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider">Most Difficult Question</div>
+          <div class="text-sm font-black text-rose-900 mt-2 line-clamp-2" id="results-most-difficult-title">Question 5 (Uncoupling Gradient)</div>
+          <div class="text-xs text-rose-600 font-bold mt-1" id="results-most-difficult-acc">33% Accuracy</div>
+        </div>
+      </div>
+
+      <!-- Students Needing Support Banner -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base">⚠️</span>
+            <h3 class="font-bold text-slate-900 text-sm">Students Needing Support (&lt; 60% Accuracy)</h3>
+          </div>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800" id="results-support-count">2 Students</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="results-support-list">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Question-Wise Accuracy Breakdown -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <h3 class="font-bold text-slate-900 text-sm">Question-Wise Accuracy Breakdown</h3>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
+              <tr>
+                <th class="p-3">#</th>
+                <th class="p-3">Question Text</th>
+                <th class="p-3">Difficulty</th>
+                <th class="p-3">Attempts</th>
+                <th class="p-3">Accuracy</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="results-question-breakdown-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Per-Student Score Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <h3 class="font-bold text-slate-900 text-sm">Per-Student Score & Accuracy</h3>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
+              <tr>
+                <th class="p-3">Student Name</th>
+                <th class="p-3">Questions Answered</th>
+                <th class="p-3">Correct Answers</th>
+                <th class="p-3">Score %</th>
+                <th class="p-3 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="results-student-scores-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- MODULE 2: LEARNING GAP FINDER (TEACHER VIEW) -->
+    <!-- ========================================== -->
+    <section id="view-learning-gaps" class="mvp-view hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <button onclick="mvp.switchView('teacher-dashboard')" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition mb-1">
+            ← Return to Dashboard
+          </button>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <span class="text-xs font-bold text-amber-600 uppercase tracking-wider">Module 2</span>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 mt-0.5">Learning Gap Finder & Misconception Diagnosis</h1>
+          <p class="text-xs text-slate-500 mt-0.5">Analyzes quiz responses to pinpoint root-cause misunderstandings and generate remediation activities.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="mvp.deployRemediationBooster()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+            ✨ Deploy 3-Question Targeted Booster
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Critical Gaps Detected</div>
+          <div class="text-3xl font-black text-rose-600 mt-2">3 Gaps</div>
+          <div class="text-[11px] text-slate-400 mt-1">Requires immediate clarification</div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Top Misconception Spike</div>
+          <div class="text-3xl font-black text-amber-600 mt-2">46% Fail</div>
+          <div class="text-[11px] text-slate-400 mt-1">Photolysis vs CO₂ Calvin Cycle</div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Remediation Status</div>
+          <div class="text-3xl font-black text-emerald-600 mt-2">Ready</div>
+          <div class="text-[11px] text-slate-400 mt-1">5-Min Micro-Lecture formulated</div>
+        </div>
+      </div>
+
+      <!-- Diagnosed Conceptual Gaps Cards -->
+      <div class="space-y-4">
+        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Class-Wide Misconception Breakdown</h2>
+        <div class="space-y-4" id="learning-gaps-cards-container">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Individual Student Gap Directory -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <h3 class="font-bold text-slate-900 text-sm">Individual Student Learning Gap Roster</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
+              <tr>
+                <th class="p-3">Student</th>
+                <th class="p-3">Score</th>
+                <th class="p-3">Primary Learning Gap</th>
+                <th class="p-3">Status</th>
+                <th class="p-3">Personalized Pedagogical Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="learning-gaps-students-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- MODULE 3: STUDENT SUCCESS AGENT (TEACHER VIEW) -->
+    <!-- ========================================== -->
+    <section id="view-success-agent" class="mvp-view hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <button onclick="mvp.switchView('teacher-dashboard')" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition mb-1">
+            ← Return to Dashboard
+          </button>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            <span class="text-xs font-bold text-rose-600 uppercase tracking-wider">Module 3</span>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 mt-0.5">Student Success Agent — Early Warning Radar</h1>
+          <p class="text-xs text-slate-500 mt-0.5">Identifies at-risk learners early based on quiz accuracy (&lt;60%), absences, and missing homework, and generates custom intervention action plans.</p>
+        </div>
+        <button onclick="mvp.showAllActionPlansModal()" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-sm transition">
+          📄 Export All Action Plans
+        </button>
+      </div>
+
+      <!-- Risk Level Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-rose-200 bg-rose-50/20 shadow-sm text-center">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider">High Risk (Immediate Action)</div>
+          <div class="text-3xl font-black text-rose-700 mt-2" id="ssa-high-risk-count">2 Students</div>
+          <div class="text-[11px] text-rose-600 mt-1">Jordan Smith, Noah Miller</div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/20 shadow-sm text-center">
+          <div class="text-xs font-bold text-amber-700 uppercase tracking-wider">Moderate Risk (Monitor)</div>
+          <div class="text-3xl font-black text-amber-700 mt-2" id="ssa-mod-risk-count">1 Student</div>
+          <div class="text-[11px] text-amber-600 mt-1">Marcus Vance</div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-emerald-200 bg-emerald-50/20 shadow-sm text-center">
+          <div class="text-xs font-bold text-emerald-700 uppercase tracking-wider">On-Track (Low Risk)</div>
+          <div class="text-3xl font-black text-emerald-700 mt-2" id="ssa-low-risk-count">3 Students</div>
+          <div class="text-[11px] text-emerald-600 mt-1">Chloe, Maya, Alex</div>
+        </div>
+      </div>
+
+      <!-- Student Success Roster with Action Plans -->
+      <div class="space-y-4">
+        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">At-Risk Student Intervention Roster</h2>
+        <div class="space-y-3" id="ssa-roster-container">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- MODULE 1 (STUDENT MODE): SELF-STUDY AI QUIZ -->
+    <!-- ========================================== -->
+    <section id="view-student-self-quiz" class="mvp-view hidden max-w-xl mx-auto space-y-6">
+      <div class="text-center space-y-2">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto text-2xl font-bold">
+          ✨
+        </div>
+        <h1 class="text-2xl font-black text-slate-900">Self-Study AI Quiz Generator</h1>
+        <p class="text-xs text-slate-500">Pick any subject or topic to test yourself and find where you can improve.</p>
+      </div>
+
+      <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-md space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Topic You Want to Practice</label>
+          <input type="text" id="self-study-topic" value="Photosynthesis" placeholder="e.g. Cellular Respiration, Quadratics, World War II" class="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Grade Level</label>
+            <select id="self-study-grade" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+              <option value="9">Grade 9</option>
+              <option value="10" selected>Grade 10</option>
+              <option value="11">Grade 11</option>
+              <option value="12">Grade 12</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Questions</label>
+            <select id="self-study-count" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+              <option value="3" selected>3 Quick Check Questions</option>
+              <option value="5">5 Complete Questions</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
+          <span>Popular topics:</span>
+          <button onclick="mvp.fillSelfStudy('Photosynthesis')" class="text-indigo-600 font-bold hover:underline">Photosynthesis</button> •
+          <button onclick="mvp.fillSelfStudy('Quadratic Equations')" class="text-indigo-600 font-bold hover:underline">Quadratics</button> •
+          <button onclick="mvp.fillSelfStudy('Newtonian Physics')" class="text-indigo-600 font-bold hover:underline">Physics</button>
+        </div>
+
+        <button onclick="mvp.startSelfStudyQuiz()" class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow transition">
+          Generate & Start Practice Quiz →
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- MODULE 2 (STUDENT MODE): MY LEARNING GAPS -->
+    <!-- ========================================== -->
+    <section id="view-student-gaps" class="mvp-view hidden max-w-xl mx-auto space-y-6">
+      <div class="text-center space-y-2">
+        <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800">Learning Gap Finder</span>
+        <h1 class="text-2xl font-black text-slate-900">My Personal Learning Gap Report</h1>
+        <p class="text-xs text-slate-500">Based on your recent quiz responses, here are concepts you have mastered and areas for revision.</p>
+      </div>
+
+      <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-md space-y-5">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-2">✓ Concepts You Have Mastered</h3>
+          <div class="space-y-2">
+            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
+              <strong class="text-emerald-950 block">Chloroplast Structure & Function</strong>
+              <span class="text-emerald-800">You consistently identify the chloroplast and chlorophyll pigments with 100% accuracy.</span>
+            </div>
+            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
+              <strong class="text-emerald-950 block">Oxygen Byproduct Release</strong>
+              <span class="text-emerald-800">You understand that photolysis releases oxygen gas into the atmosphere.</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-rose-600 mb-2">⚠️ Areas for Growth (Your Gaps)</h3>
+          <div class="space-y-2">
+            <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs space-y-1">
+              <strong class="text-rose-950 block">Water Photolysis vs Calvin Cycle CO₂</strong>
+              <p class="text-rose-800 leading-relaxed">
+                You chose Option A (CO₂) on Question 3. Remember: Water is split to give electrons to Photosystem II. CO₂ is used later in the dark Calvin cycle to assemble glucose.
+              </p>
+              <div class="pt-1 text-[11px] font-bold text-rose-700">Recommended action: Review the 3-step photolysis equation.</div>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="mvp.switchView('student-self-quiz')" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition">
+          Practice Weak Topic with AI Quiz →
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- MODULE 3 (STUDENT MODE): MY SUCCESS COACH -->
+    <!-- ========================================== -->
+    <section id="view-student-agent" class="mvp-view hidden max-w-xl mx-auto space-y-6">
+      <div class="text-center space-y-2">
+        <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-indigo-100 text-indigo-700">Student Success Agent</span>
+        <h1 class="text-2xl font-black text-slate-900">My Success Coach</h1>
+        <p class="text-xs text-slate-500">Your personalized learning companion tracking your progress, streak, and tips.</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="p-4 bg-white rounded-2xl border border-slate-200 text-center shadow-xs">
+          <div class="text-2xl mb-1">🔥</div>
+          <div class="text-2xl font-black text-slate-900">3 Days</div>
+          <div class="text-xs text-slate-500">Active Study Streak</div>
+        </div>
+        <div class="p-4 bg-white rounded-2xl border border-slate-200 text-center shadow-xs">
+          <div class="text-2xl mb-1">⭐</div>
+          <div class="text-2xl font-black text-emerald-600">88%</div>
+          <div class="text-xs text-slate-500">Current Unit Mastery</div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-md space-y-4">
+        <h3 class="font-bold text-slate-900 text-sm">💡 AI Success Coach Tip of the Day</h3>
+        <p class="text-xs text-slate-600 leading-relaxed bg-indigo-50/60 p-4 rounded-2xl border border-indigo-100">
+          "Spaced practice works 3x better than cramming! Take a 3-question self-quiz on Cellular Energy today to solidify the concepts before your next live classroom session."
+        </p>
+
+        <div class="space-y-2 text-xs">
+          <div class="font-bold text-slate-800">Your Weekly Goals:</div>
+          <div class="flex items-center gap-2 text-slate-700">
+            <span class="text-emerald-600 font-bold">✓</span> Complete Photosynthesis Live Session
+          </div>
+          <div class="flex items-center gap-2 text-slate-700">
+            <span class="text-emerald-600 font-bold">✓</span> Review Stroma vs Thylakoid distinction
+          </div>
+          <div class="flex items-center gap-2 text-slate-700">
+            <span class="text-indigo-600 font-bold">○</span> Take 1 Self-Study Quiz on Quadratics
+          </div>
+        </div>
+
+        <button onclick="mvp.switchView('student-join')" class="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition">
+          Join Live Classroom Quiz →
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Role-Based Sign-In / Switcher Modal -->
+  <div id="modal-teacher-login" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Sign In & Choose Access Role</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Select your role to test access boundaries.</p>
+        </div>
+        <button onclick="mvp.closeLoginModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+
+      <!-- Role Selection Cards -->
+      <div class="space-y-3">
+        <!-- 1. Student Role Card -->
+        <div onclick="mvp.loginAsRole('student')" class="p-4 rounded-2xl border-2 border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 cursor-pointer transition flex items-start gap-3 group">
+          <span class="text-3xl p-2 rounded-xl bg-white border border-slate-200 shadow-sm shrink-0">🧑‍🎓</span>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-900 text-sm group-hover:text-emerald-700">Student Role (Alex Chen)</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Restricted Access</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Access <strong>ONLY</strong> the Student Dashboard, Join Screen, and Live Adaptive Quiz. All Teacher Dashboards, Quiz Creation, and Live Analytics are strictly hidden and locked.
+            </p>
+            <span class="inline-block text-xs font-bold text-emerald-600 pt-1 group-hover:underline">
+              Enter Student View Only →
+            </span>
+          </div>
+        </div>
+
+        <!-- 2. Teacher Role Card -->
+        <div onclick="mvp.loginAsRole('teacher')" class="p-4 rounded-2xl border-2 border-indigo-200 hover:border-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 cursor-pointer transition flex items-start gap-3 group">
+          <span class="text-3xl p-2 rounded-xl bg-white border border-indigo-100 shadow-sm shrink-0">👩‍🏫</span>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-indigo-950 text-sm group-hover:text-indigo-600">Teacher Role (Dr. Sarah Jenkins)</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Full Access</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Access <strong>ALL</strong> features: Teacher Dashboard, AI Quiz Studio, Start Live Session, Live Student Telemetry, and Question-wise Results.
+            </p>
+            <span class="inline-block text-xs font-bold text-indigo-600 pt-1 group-hover:underline">
+              Enter with Full Teacher Access →
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="mvp.closeLoginModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Scripts -->
+  <script src="mvp-db.js"></script>
+  <script src="ai-helper.js"></script>
+  <script src="mvp-app.js"></script>
+</body>
+</html>
